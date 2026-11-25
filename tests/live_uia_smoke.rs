@@ -1,3 +1,5 @@
+use std::io::Write;
+use std::process::{Command, Stdio};
 use uiaprobe::cli::parse_hwnd;
 use uiaprobe::coords::init_dpi_awareness;
 use uiaprobe::uia::browser::{BrowserDomExtractor, ChromiumDomExtractor};
@@ -58,4 +60,57 @@ fn live_active_window_dump_smoke() {
     let res = extract_window_nodes(&session, hwnd, &opts, &ChromiumDomExtractor)
         .expect("live UIA traversal should succeed");
     assert!(res.nodes.len() <= 50);
+}
+
+#[test]
+fn uia_session_create_drop_cycles_are_safe() {
+    for _ in 0..3 {
+        let session = UiaSession::new().expect("UiaSession::new should succeed");
+        drop(session);
+    }
+}
+
+#[test]
+fn stdio_cli_handles_ping_invalid_json_and_quit() {
+    let bin = env!("CARGO_BIN_EXE_uiaprobe");
+    let mut child = Command::new(bin)
+        .arg("stdio")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("failed to spawn uiaprobe stdio");
+
+    {
+        let stdin = child.stdin.as_mut().expect("stdin should be piped");
+        writeln!(stdin, "{{\"cmd\":\"ping\"}}").unwrap();
+        writeln!(stdin, "not valid json").unwrap();
+        writeln!(stdin, "{{\"cmd\":\"quit\"}}").unwrap();
+    }
+
+    let output = child.wait_with_output().expect("wait_with_output failed");
+    assert!(output.status.success(), "stdio should exit 0");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines.len(), 3);
+    assert_eq!(lines[0], "{\"ok\":true,\"pong\":true}");
+    assert!(lines[1].contains("\"ok\":false"));
+    assert_eq!(lines[2], "{\"ok\":true,\"bye\":true}");
+}
+
+#[test]
+fn dump_cli_invalid_hwnd_writes_nothing_to_stdout() {
+    let bin = env!("CARGO_BIN_EXE_uiaprobe");
+    let output = Command::new(bin)
+        .args(["dump", "--hwnd", "0"])
+        .output()
+        .expect("failed to run uiaprobe dump");
+
+    assert!(!output.status.success());
+    assert!(
+        output.stdout.is_empty(),
+        "stdout must remain empty on error"
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("error:"));
 }
