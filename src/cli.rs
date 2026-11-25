@@ -1,5 +1,6 @@
 use crate::error::{ProbeError, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
 #[command(
@@ -16,6 +17,8 @@ pub struct Cli {
 pub enum Commands {
     /// Dump interactive UI elements of a window as JSON to stdout
     Dump(DumpArgs),
+    /// Run resident JSON-line interactive mode over stdin/stdout
+    Stdio,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -52,6 +55,10 @@ pub struct DumpArgs {
     /// Emit single-line minified JSON and omit default 'enabled' state
     #[arg(long, default_value_t = false)]
     pub compact: bool,
+
+    /// Compare current nodes against a baseline DumpOutput JSON file
+    #[arg(long)]
+    pub diff: Option<PathBuf>,
 }
 
 /// Parses a decimal or `0x`-prefixed hexadecimal HWND string.

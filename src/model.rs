@@ -1,7 +1,7 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// Root JSON payload emitted to stdout by `uiaprobe dump`.
-#[derive(Debug, Clone, Serialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DumpOutput {
     pub timestamp: u64,
     pub elapsed_ms: u64,
@@ -11,7 +11,7 @@ pub struct DumpOutput {
 }
 
 /// Metadata describing the probed target window.
-#[derive(Debug, Clone, Serialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct WindowInfo {
     pub hwnd: isize,
     pub title: String,
@@ -20,7 +20,7 @@ pub struct WindowInfo {
 }
 
 /// A single filtered, interactive UI element in physical screen coordinates.
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UiNode {
     pub id: String,
     pub role: String,
@@ -31,7 +31,7 @@ pub struct UiNode {
 }
 
 /// Physical pixel bounding box relative to the primary monitor top-left `(0, 0)`.
-#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BBox {
     pub x: i32,
     pub y: i32,
@@ -40,7 +40,7 @@ pub struct BBox {
 }
 
 /// Physical pixel center point for click/focus targeting.
-#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Point {
     pub x: i32,
     pub y: i32,

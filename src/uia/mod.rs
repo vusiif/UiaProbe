@@ -1,5 +1,6 @@
 pub mod browser;
 pub mod cache;
+pub mod ia2;
 pub mod standard;
 
 use crate::coords::dpi_scale_for_hwnd;
@@ -55,9 +56,12 @@ impl Drop for ComGuard {
 }
 
 /// Active UIA session holding the `IUIAutomation` root COM object.
+///
+/// Field order is critical: `automation` must be declared before `_com` so that
+/// `IUIAutomation::Release` runs before `CoUninitialize`.
 pub struct UiaSession {
-    _com: ComGuard,
     pub automation: IUIAutomation,
+    _com: ComGuard,
 }
 
 impl UiaSession {
@@ -70,8 +74,8 @@ impl UiaSession {
                 |e| ProbeError::ComInit(format!("CoCreateInstance(CUIAutomation) failed: {e}")),
             )?;
         Ok(Self {
-            _com: com,
             automation,
+            _com: com,
         })
     }
 }

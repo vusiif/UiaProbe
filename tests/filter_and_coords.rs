@@ -1,8 +1,10 @@
 use uiaprobe::coords::normalize_bbox;
+use uiaprobe::diff::compute_diff;
 use uiaprobe::filter::{filter_node, whitelist_role, TraversalBudget};
 use uiaprobe::hash::short_node_id;
 use uiaprobe::model::{BBox, DumpOutput, Point, UiNode, WindowInfo};
 use uiaprobe::uia::cache::CachedNodeData;
+use uiaprobe::uia::ia2::{is_gecko_process, msaa_role_to_whitelist};
 
 fn sample_cached(control_type: i32, name: &str) -> CachedNodeData {
     CachedNodeData {
@@ -155,4 +157,44 @@ fn traversal_budget_enforces_raw_and_output_caps() {
     assert!(raw_budget.try_visit_raw());
     assert!(!raw_budget.try_visit_raw());
     assert!(raw_budget.truncated);
+}
+
+#[test]
+fn compute_diff_detects_added_removed_and_changed() {
+    let mk = |id: &str, name: &str| UiNode {
+        id: id.to_string(),
+        role: "Button".to_string(),
+        name: name.to_string(),
+        bbox: BBox {
+            x: 10,
+            y: 10,
+            w: 50,
+            h: 20,
+        },
+        anchor: Point { x: 35, y: 20 },
+        states: vec!["enabled".to_string()],
+    };
+
+    let prev = vec![mk("n_0001", "Save"), mk("n_0002", "Cancel")];
+    let curr = vec![mk("n_0001", "Saving..."), mk("n_0003", "Help")];
+
+    let diff = compute_diff(&prev, &curr);
+    assert_eq!(diff.added.len(), 1);
+    assert_eq!(diff.added[0].id, "n_0003");
+    assert_eq!(diff.removed.len(), 1);
+    assert_eq!(diff.removed[0].id, "n_0002");
+    assert_eq!(diff.changed.len(), 1);
+    assert_eq!(diff.changed[0].id, "n_0001");
+    assert_eq!(diff.changed[0].before.name, "Save");
+    assert_eq!(diff.changed[0].after.name, "Saving...");
+}
+
+#[test]
+fn ia2_gecko_detection_and_role_mapping() {
+    assert!(is_gecko_process("firefox.exe"));
+    assert!(is_gecko_process("Firefox.exe"));
+    assert!(!is_gecko_process("chrome.exe"));
+    assert_eq!(msaa_role_to_whitelist(0x2B), Some("Button"));
+    assert_eq!(msaa_role_to_whitelist(0x1E), Some("Hyperlink"));
+    assert_eq!(msaa_role_to_whitelist(0x0A), None);
 }
